@@ -88,9 +88,11 @@ getErrors sys spec =
 
 check = checkWithIncludes []
 
-checkWithIncludes includes src =
+checkWithIncludes includes src = checkWithIncludesR includes src False
+
+checkWithIncludesR includes src recursive =
     getErrors
-        (mockedSystemInterface includes)
+        (mockedSystemInterface includes recursive)
         emptyCheckSpec {
             csScript = src,
             csExcludedWarnings = [2148]
@@ -112,7 +114,7 @@ prop_commentDisablesAnalysisIssue2 =
 
 prop_optionDisablesIssue1 =
     null $ getErrors
-                (mockedSystemInterface [])
+                (mockedSystemInterface [] False)
                 emptyCheckSpec {
                     csScript = "echo $1",
                     csExcludedWarnings = [2148, 2086]
@@ -120,7 +122,7 @@ prop_optionDisablesIssue1 =
 
 prop_optionDisablesIssue2 =
     null $ getErrors
-                (mockedSystemInterface [])
+                (mockedSystemInterface [] False)
                 emptyCheckSpec {
                     csScript = "echo \"$10\"",
                     csExcludedWarnings = [2148, 1037]
@@ -177,6 +179,9 @@ prop_filewideAnnotation7 = null $
 prop_filewideAnnotationBase2 = [2086, 2181] == check "true\n[ $? == 0 ] && echo $1"
 prop_filewideAnnotation8 = null $
     check "# Disable $? warning\n#shellcheck disable=SC2181\n# Disable quoting warning\n#shellcheck disable=2086\ntrue\n[ $? == 0 ] && echo $1"
+
+prop_canSourceRecursive =
+    [2154] == checkWithIncludesR [("lib", "echo \"$f\"")] "source lib" True
 
 return []
 runTests = $quickCheckAll

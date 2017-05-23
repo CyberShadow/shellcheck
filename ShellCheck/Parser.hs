@@ -1847,7 +1847,7 @@ readSource pos t@(T_Redirecting _ _ (T_SimpleCommand _ _ (cmd:file:_))) = do
                 sys <- Mr.ask
                 input <-
                     if filename == "/dev/null" -- always allow /dev/null
-                    then return (Right "")
+                    then return (Right ("", False))
                     else system $ siReadFile sys filename
                 case input of
                     Left err -> do
@@ -1858,7 +1858,7 @@ readSource pos t@(T_Redirecting _ _ (T_SimpleCommand _ _ (cmd:file:_))) = do
                         id <- getNextIdAt pos
 
                         let included = do
-                            src <- subRead filename script
+                            src <- subRead filename (fst script) (snd script)
                             return $ T_Include id t src
 
                         let failed = do
@@ -1868,9 +1868,9 @@ readSource pos t@(T_Redirecting _ _ (T_SimpleCommand _ _ (cmd:file:_))) = do
 
                         included <|> failed
   where
-    subRead name script =
+    subRead name script recursive =
         withContext (ContextSource name) $
-            inSeparateContext $
+            (if recursive then id else inSeparateContext) $
                 subParse (initialPos name) readScript script
 readSource _ t = return t
 
@@ -2740,7 +2740,7 @@ readScript = do
 -- Interactively run a parser in ghci:
 -- debugParse readScript "echo 'hello world'"
 debugParse p string = runIdentity $ do
-    (res, _) <- runParser (mockedSystemInterface []) p "-" string
+    (res, _) <- runParser (mockedSystemInterface [] False) p "-" string
     return res
 
 
@@ -2749,7 +2749,7 @@ isWarning p s = parsesCleanly p s == Just False  -- The string parses with warni
 isNotOk p s =   parsesCleanly p s == Nothing     -- The string does not parse
 
 parsesCleanly parser string = runIdentity $ do
-    (res, sys) <- runParser (mockedSystemInterface [])
+    (res, sys) <- runParser (mockedSystemInterface [] False)
                     (parser >> eof >> getState) "-" string
     case (res, sys) of
         (Right userState, systemState) ->

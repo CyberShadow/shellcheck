@@ -61,12 +61,14 @@ instance Monoid Status where
 data Options = Options {
     checkSpec :: CheckSpec,
     externalSources :: Bool,
+    isRecursive :: Bool,
     formatterOptions :: FormatterOptions
 }
 
 defaultOptions = Options {
     checkSpec = emptyCheckSpec,
     externalSources = False,
+    isRecursive = False,
     formatterOptions = FormatterOptions {
         foColorOption = ColorAuto
     }
@@ -85,6 +87,8 @@ options = [
         (ReqArg (Flag "shell") "SHELLNAME") "Specify dialect (sh,bash,dash,ksh)",
     Option "x" ["external-sources"]
         (NoArg $ Flag "externals" "true") "Allow 'source' outside of FILES.",
+    Option "r" ["recursive"]
+        (NoArg $ Flag "recursive" "true") "Show warnings from sourced files.",
     Option "V" ["version"]
         (NoArg $ Flag "version" "true") "Print version information"
     ]
@@ -240,6 +244,11 @@ parseOption flag options =
                 externalSources = True
             }
 
+        Flag "recursive" _ ->
+            return options {
+                isRecursive = True
+            }
+
         Flag "color" color ->
             return options {
                 formatterOptions = (formatterOptions options) {
@@ -268,11 +277,11 @@ ioInterface options files = do
     get inputs file = do
         ok <- allowable inputs file
         if ok
-          then (Right <$> inputFile file) `catch` handler
+          then (Right <$> ((\s -> (s, isRecursive options)) <$> inputFile file)) `catch` handler
           else return $ Left (file ++ " was not specified as input (see shellcheck -x).")
 
       where
-        handler :: IOException -> IO (Either ErrorMessage String)
+        handler :: IOException -> IO (Either ErrorMessage (String, Bool))
         handler ex = return . Left $ show ex
 
     allowable inputs x =

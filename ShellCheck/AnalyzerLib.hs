@@ -116,7 +116,7 @@ pScript s =
         psFilename = "script",
         psScript = s
     }
-  in prRoot . runIdentity $ parseScript (mockedSystemInterface []) pSpec
+  in prRoot . runIdentity $ parseScript (mockedSystemInterface [] False) pSpec
 
 -- For testing. If parsed, returns whether there are any comments
 producesComments :: Checker -> String -> Maybe Bool

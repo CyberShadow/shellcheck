@@ -26,7 +26,8 @@ import qualified Data.Map as Map
 
 newtype SystemInterface m = SystemInterface {
     -- Read a file by filename, or return an error
-    siReadFile :: String -> m (Either ErrorMessage String)
+    -- When reading a file, also return whether we should show errors in it
+    siReadFile :: String -> m (Either ErrorMessage (String, Bool))
 }
 
 -- ShellCheck input and output
@@ -105,13 +106,13 @@ data ColorOption =
   deriving (Ord, Eq, Show)
 
 -- For testing
-mockedSystemInterface :: [(String, String)] -> SystemInterface Identity
-mockedSystemInterface files = SystemInterface {
+mockedSystemInterface :: [(String, String)] -> Bool -> SystemInterface Identity
+mockedSystemInterface files recursive = SystemInterface {
     siReadFile = rf
 }
   where
     rf file =
         case filter ((== file) . fst) files of
             [] -> return $ Left "File not included in mock."
-            [(_, contents)] -> return $ Right contents
+            [(_, contents)] -> return $ Right (contents, recursive)
 
